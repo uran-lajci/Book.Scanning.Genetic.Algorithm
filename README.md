@@ -35,3 +35,11 @@ best_solution = solver.solve()
 
 ## Requirements- Python 3.x
 - A valid `InstanceData` and `Solution` object
+
+## References
+
+Luke, S. (2014). Essentials of Metaheuristics (2nd ed., Version 2.1). George Mason University. Retrieved from https://cs.gmu.edu/~sean/book/metaheuristics/
+- Algorithm 33 The Genetic Algorithm with Elitism (p. 46)
+
+Algorithms inspired by nature 2025 class repository available on https://github.com/ArianitHalimi/AIN_25
+- Mutation and crossover use operators from this repository
