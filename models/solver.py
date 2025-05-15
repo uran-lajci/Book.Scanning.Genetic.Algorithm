@@ -440,7 +440,8 @@ class Solver:
             # new_solution = target_climb(solution_copy, data)
 
             # solution_copy = copy.deepcopy(solution)
-            new_solution = target_climb(solution, data)
+            solution_copy = solution.shallow_copy()
+            new_solution = target_climb(solution_copy, data)
 
             if (new_solution.fitness_score >= solution.fitness_score):
                 solution = new_solution

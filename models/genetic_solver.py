@@ -1,69 +1,160 @@
 import random
-from typing import List, Tuple
+import time
+from typing import Tuple
 
-from models import InstanceData, Solution
-from models.solver import Solver
+from models.selection_strategies import SelectionStrategies
+from models.tweaks import Tweaks
+from models.solution import Solution
+from models.instance_data import InstanceData
 
 
-class GeneticAlgorithmSolver:
-    def __init__(self, instance: InstanceData, initial_solution: Solution):
-        self.instance = instance
+class GeneticSolver:
+    def __init__(self,
+                 initial_solution: Solution,
+                 instance: InstanceData,
+                 population_size=100,
+                 generations=500,
+                 mutation_prob=0.39,
+                 crossover_rate=0.33,
+                 immigrant_frac=0.06,
+                 steady_state_ratio=0.25,
+                 time_limit_sec=10 * 60,
+                 tweak_steps=5
+                 ):
         self.initial_solution = initial_solution
-        self.population_size = 50
-        self.tournament_size = 10
-        self.mutation_prob = 1
-        self.hill_climbing_steps = 100  # For mutation
-        self.solver = Solver()
+        self.instance = instance
+        self.population_size = population_size
+        self.generations = generations
+        self.population = []
+        self.mutation_prob = mutation_prob
+        self.crossover_rate = crossover_rate
+        self.immigrant_frac = immigrant_frac
+        self.tweak_steps = tweak_steps
+        self.time_limit_sec = time_limit_sec
+        self.steady_state_ratio = steady_state_ratio
+        self.steady_gen_start = int(self.generations * (1 - steady_state_ratio))
+        self.steady_time_start = self.time_limit_sec * (1 - steady_state_ratio)
 
-    def solve(self) -> Solution:
+    def solve(self):
         # Initialize population with slight variations of initial solution
         population = self.initialize_population(self.initial_solution)
 
-        for generation in range(self.population_size):  # Max generations
+        start_time = time.time()
+
+        best_fitness = None
+        plateau_counter = 0
+        base_immigrant_frac = self.immigrant_frac
+
+        for generation in range(self.generations):
+            elapsed = time.time() - start_time
+            if elapsed >= self.time_limit_sec:
+                print(f"Stopping at gen {generation} due to time limit ({elapsed:.1f}s)")
+                break
+
             # Evaluate population
             population = sorted(population, key=lambda x: x.fitness_score, reverse=True)
+            best_solution = population[0]
+            print(f"Gen {generation}: Best fitness = {best_solution.fitness_score}")
 
-            print(f"Gen {generation}: Best fitness = {population[0].fitness_score}")
+            # Plateau tracking
+            if best_fitness is None or best_solution.fitness_score > best_fitness:
+                best_fitness = best_solution.fitness_score
+                plateau_counter = 0
+                self.immigrant_frac = base_immigrant_frac  # Reset if improvement
+            else:
+                plateau_counter += 1
+                # Increase immigrant_frac after N stagnant generations (e.g., 10)
+                if plateau_counter > 5:
+                    self.immigrant_frac = min(1.0, self.immigrant_frac * 1.5)
 
-            # Create new generation
-            new_population = [population[0]]  # Keep best solution
+            # decide whether to use generational or steady-state:
+            use_steady = (
+                    generation >= self.steady_gen_start
+                    or elapsed >= self.steady_time_start
+            )
+            if not use_steady:
+                new_population = self.create_offspring_generative(population)
+            else:
+                new_population = self.create_offspring_steady_state(population)
 
-            while len(new_population) < self.population_size:
-                # Selection
-                parent1 = self.tournament_select(population)
-                parent2 = self.tournament_select(population)
+            num_immigrants = int(self.immigrant_frac * self.population_size)
+            if num_immigrants > 0:
+                immigrants = self.initialize_population(self.initial_solution)[:num_immigrants]
 
-                # Crossover
-                offspring1, offspring2 = self.crossover(parent1, parent2)
+                # Remove worst individuals to make room for immigrants
+                new_population = sorted(new_population, key=lambda x: x.fitness_score, reverse=True)
+                new_population = new_population[:-num_immigrants] + immigrants
 
-                # Mutation
-                if random.random() < self.mutation_prob:
-                    offspring1_fitness, offspring1 = self.solver.hill_climbing_combined_w_initial_solution(offspring1, self.instance, iterations=self.hill_climbing_steps)
-                if random.random() < self.mutation_prob:
-                    offspring2_fitness, offspring2 = self.solver.hill_climbing_combined_w_initial_solution(offspring2, self.instance, iterations=self.hill_climbing_steps)
+            # Ensure best solution is not lost
+            if best_solution.fitness_score > min(new_population, key=lambda x: x.fitness_score).fitness_score:
+                new_population[-1] = best_solution
 
-                new_population.extend([offspring1, offspring2])
-
-            # Keep population size constant
+            # Update population
             population = new_population[:self.population_size]
 
         return max(population, key=lambda x: x.fitness_score)
 
-    def initialize_population(self, initial_solution: Solution) -> List[Solution]:
-        """Create initial population with variations of the initial solution"""
-        population = [self.initial_solution]
+    def create_offspring_generative(self, population):
+        new_population = []
+        while len(new_population) < self.population_size:
+            selection_method = SelectionStrategies.choose_selection_method()
+            parent1 = selection_method(population)
+            parent2 = selection_method(population)
 
-        while len(population) < self.population_size:
-            # Create variant by shuffling some libraries
-            variant_fitness, variant = self.solver.hill_climbing_combined_w_initial_solution(initial_solution, self.instance, iterations=5)
-            population.append(variant)
+            offspring1, offspring2 = self.crossover(parent1, parent2)
+
+            if random.random() < self.mutation_prob:
+                offspring1 = Tweaks.tweak_with_iterations(offspring1, self.instance, iterations=self.tweak_steps)
+            if random.random() < self.mutation_prob:
+                offspring2 = Tweaks.tweak_with_iterations(offspring2, self.instance, iterations=self.tweak_steps)
+
+            new_population.extend([offspring1.shallow_copy(), offspring2.shallow_copy()])
+
+        return new_population
+
+    def create_offspring_steady_state(self, population):
+        new_population = [population[0]]
+
+        while len(new_population) < self.population_size:
+            # Selection
+            selection_method = SelectionStrategies.choose_selection_method()
+            parent1 = selection_method(population)
+            parent2 = selection_method(population)
+
+            offspring1, offspring2 = self.crossover(parent1, parent2)
+
+            if random.random() < self.mutation_prob:
+                offspring1 = Tweaks.tweak_with_iterations(offspring1, self.instance, iterations=self.tweak_steps)
+            if random.random() < self.mutation_prob:
+                offspring2 = Tweaks.tweak_with_iterations(offspring2, self.instance, iterations=self.tweak_steps)
+
+            # Combine the population with offspring and select the best ones
+            combined = population + [offspring1.shallow_copy(), offspring2.shallow_copy()]
+            new_population = sorted(combined, key=lambda x: x.fitness_score, reverse=True)[:self.population_size]
+
+        return new_population
+
+    def initialize_population(self, initial_solution, tweak_ratio: float = 0.5):
+        population = [initial_solution.shallow_copy()]
+
+        num_tweaked = int(self.population_size * tweak_ratio)
+        num_clones = self.population_size - num_tweaked - 1
+
+        # Add tweaked solutions
+        for _ in range(num_tweaked):
+            tweaked = Tweaks.tweak_with_iterations(
+                initial_solution,
+                self.instance,
+                iterations=random.randint(1, self.tweak_steps)
+            )
+            population.append(tweaked.shallow_copy())
+
+        # Add direct shallow clones
+        for _ in range(num_clones):
+            population.append(initial_solution.shallow_copy())
 
         return population
 
-    def tournament_select(self, population: List[Solution]) -> Solution:
-        """Select best solution out of random tournament_size candidates"""
-        tournament = random.sample(population, self.tournament_size)
-        return max(tournament, key=lambda x: x.fitness_score)
 
     def crossover(self, parent1: Solution, parent2: Solution) -> Tuple[Solution, Solution]:
 
@@ -135,8 +226,7 @@ class GeneticAlgorithmSolver:
                     remaining_days = self.instance.num_days - current_day
                     max_books = remaining_days * lib_data.books_per_day
 
-                    available_books = [b.id for b in lib_data.books
-                                       if b.id not in scanned_books]
+                    available_books = [b.id for b in lib_data.books if b.id not in scanned_books]
                     available_books.sort(key=lambda x: self.instance.scores[x], reverse=True)
                     selected = available_books[:max_books]
 
@@ -145,15 +235,19 @@ class GeneticAlgorithmSolver:
                         scanned_per_lib[lib] = selected
                         used_libs.append(lib)
 
-                return Solution(
+                built = Solution(
                     signed_libs=used_libs,
                     unsigned_libs=list(set(range(self.instance.num_libs)) - set(used_libs)),
                     scanned_books_per_library=scanned_per_lib,
                     scanned_books=scanned_books
                 )
 
+                built.calculate_fitness_score(self.instance.scores)
+                return built
+
             return (build_solution(offspring1_signed),
                     build_solution(offspring2_signed))
+
 
         except ValueError as e:
             # Fallback to parents if crossover fails

@@ -62,3 +62,14 @@ class Solution:
         updated_fitness = current_fitness + delta_fitness
 
         self.fitness_score = updated_fitness
+
+    def shallow_copy(self):
+        signed_libraries = self.signed_libraries.copy()
+        unsigned_libraries = self.unsigned_libraries.copy()
+        scanned_books_per_library = self.scanned_books_per_library.copy()
+        scanned_books = self.scanned_books.copy()
+        fitness_score = self.fitness_score
+
+        copy = Solution(signed_libraries, unsigned_libraries, scanned_books_per_library, scanned_books)
+        copy.fitness_score = fitness_score
+        return copy
