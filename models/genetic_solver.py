@@ -48,13 +48,13 @@ class GeneticSolver:
         for generation in range(self.generations):
             elapsed = time.time() - start_time
             if elapsed >= self.time_limit_sec:
-                print(f"Stopping at gen {generation} due to time limit ({elapsed:.1f}s)")
+                # print(f"Stopping at gen {generation} due to time limit ({elapsed:.1f}s)")
                 break
 
             # Evaluate population
             population = sorted(population, key=lambda x: x.fitness_score, reverse=True)
             best_solution = population[0]
-            print(f"Gen {generation}: Best fitness = {best_solution.fitness_score}")
+            # print(f"Gen {generation}: Best fitness = {best_solution.fitness_score}")
 
             # Plateau tracking
             if best_fitness is None or best_solution.fitness_score > best_fitness:
@@ -251,5 +251,5 @@ class GeneticSolver:
 
         except ValueError as e:
             # Fallback to parents if crossover fails
-            print(f"Crossover failed: {e}, returning parents")
+            # print(f"Crossover failed: {e}, returning parents")
             return parent1, parent2

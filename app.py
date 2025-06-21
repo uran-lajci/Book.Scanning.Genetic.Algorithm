@@ -4,53 +4,7 @@ from models import Parser
 from models.initial_solution import InitialSolution
 import os
 from models.genetic_solver import GeneticSolver
-from models.meta_genetic_optimizer import MetaGeneticOptimizer
 from validator.multiple_validator import validate_all_solutions
-
-
-# directory = os.listdir('input')
-#
-# # files = [
-# #     # 'b_read_on.txt',
-# #     # 'c_incunabula.txt',
-# #     #  'd_tough_choices.txt',
-# #      'e_so_many_books.txt',
-# #      # 'f_libraries_of_the_world.txt',
-# #      # 'B5000_L90_D21.txt',
-# #      # 'B50000_L400_D28.txt',
-# #      # 'B90000_L850_D21.txt',
-# #      # 'B95000_L2000_D28.txt'
-# # ]
-#
-# files = ['c_incunabula.txt']
-#
-#
-# for file in directory:
-#     if files.__contains__(file):
-#         print(f'Computing ./input/{file}')
-#         parser = Parser(f'./input/{file}')
-#         instance = parser.parse()
-#         initial_solution = InitialSolution.generate_initial_solution(instance)
-#         # geneticSolver = GeneticAlgorithmSolver(instance, initial_solution)
-#         geneticSolver = GeneticSolver(
-#             initial_solution=initial_solution,  # your initial Solution instance
-#             instance=instance
-#         )
-#         solution = geneticSolver.solve()
-#
-#         # meta_opt = MetaGeneticOptimizer(GeneticSolver, instance, initial_solution)
-#         # best_hyper = meta_opt.optimize()
-#         # print("Best hyperparameters:", best_hyper)
-#         # # run full solver with best hyper
-#         # solver = GeneticSolver(initial_solution, instance)
-#         # solver.mutation_prob = best_hyper['mutation_prob']
-#         # solver.crossover_rate = best_hyper['crossover_rate']
-#         # solver.immigrant_frac = best_hyper['immigrant_frac']
-#         # solution = solver.solve()
-#
-#         solution.export(f'./output/{file}')
-#         print(f"{solution.fitness_score:,}", file)
-
 
 def run_instances(output_dir='output'):
     print(output_dir)
