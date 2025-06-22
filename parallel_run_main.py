@@ -3,7 +3,8 @@ import os
 from concurrent.futures import ProcessPoolExecutor
 
 from models import Parser
-from models import Solver
+from models.initial_solution import InitialSolution
+from models.genetic_solver import GeneticSolver
 
 INPUT_INSTANCES_DIR = 'input'
 OUTPUT_INSTANCES_DIR = 'output'
@@ -17,21 +18,19 @@ def run_solver(version: str, instance_path: str) -> None:
     output_sub_dir = os.path.join(OUTPUT_INSTANCES_DIR, version)
     os.makedirs(output_sub_dir, exist_ok=True)
 
-    solver = Solver()
     parser = Parser(instance_path)
-    data = parser.parse()
+    instance = parser.parse()
+    initial_solution = InitialSolution.generate_initial_solution(instance)
+    genetic_solver = GeneticSolver(initial_solution=initial_solution, 
+                                    instance=instance,
+                                    time_limit_sec=MINUTES_TO_RUN * 60)
+    solution = genetic_solver.solve()
+    score = solution.fitness_score
 
-    result = solver.iterated_local_search(
-        data,
-        time_limit=MINUTES_TO_RUN * 60,
-        max_iterations=MAX_ITERATIONS
-    )
-    score = result.fitness_score
     instance_name = os.path.basename(instance_path)
     print(instance_name, score, f'version: {version}')
-
     output_file = os.path.join(output_sub_dir, instance_name)
-    result.export(output_file)
+    solution.export(output_file)
 
 
 def main():
