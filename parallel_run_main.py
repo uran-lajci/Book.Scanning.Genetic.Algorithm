@@ -10,8 +10,7 @@ INPUT_INSTANCES_DIR = 'input'
 OUTPUT_INSTANCES_DIR = 'output'
 
 MINUTES_TO_RUN = 10
-MAX_ITERATIONS = 1000
-NUM_CORES = 50
+NUM_CORES = 55
 
 
 def run_solver(version: str, instance_path: str) -> None:
@@ -37,7 +36,7 @@ def main():
     instance_paths = glob.glob(f'{INPUT_INSTANCES_DIR}/*.txt')
     jobs = []
 
-    for v in range(1, 6):
+    for v in range(1, 11):
         version = f'v{v}'
         for path in instance_paths:
             jobs.append((version, path))
