@@ -10,7 +10,7 @@ INPUT_INSTANCES_DIR = 'input'
 OUTPUT_INSTANCES_DIR = 'output'
 
 MINUTES_TO_RUN = 10
-NUM_CORES = 55
+NUM_CORES = 60
 
 
 def run_solver(version: str, instance_path: str) -> None:
